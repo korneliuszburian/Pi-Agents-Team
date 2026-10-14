@@ -290,6 +290,13 @@ test("a clean publish artifact installs and imports in an offline consumer", { t
 		const tarballs = (await readdir(artifacts)).filter((entry) => entry.endsWith(".tgz"));
 		assert.equal(tarballs.length, 1, "npm pack should create exactly one tarball");
 
+		// Keep the offline consumer's wildcard transitive Node types within the
+		// source lock closure; do not resolve a newer uncached release.
+		const sourceLock = JSON.parse(await readFile(join(projectRoot, "package-lock.json"), "utf8")) as {
+			packages: Record<string, { version?: string }>;
+		};
+		const nodeTypesVersion = sourceLock.packages["node_modules/@types/node"]?.version;
+		assert.equal(typeof nodeTypesVersion, "string", "Node types must be pinned in the source lockfile");
 		await writeFile(
 			join(consumer, "package.json"),
 			JSON.stringify({
@@ -297,6 +304,7 @@ test("a clean publish artifact installs and imports in an offline consumer", { t
 				private: true,
 				type: "module",
 				dependencies: {
+					"@types/node": nodeTypesVersion,
 					"@earendil-works/pi-coding-agent": "0.85.1",
 					"@earendil-works/pi-tui": "0.85.1",
 					"typebox": "1.3.7",
